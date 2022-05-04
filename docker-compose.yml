@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  dicom-anonymization-container:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: dicom-anonymization
+    container_name: dicom-anonymization-service
+    ports:
+      - "8000:8000"
