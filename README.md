@@ -1,4 +1,4 @@
-# DICOM Structured Content Anonymization Service
+# InteropEHRate DICOM Structured Content Anonymization Service
 
 ## Description
 
