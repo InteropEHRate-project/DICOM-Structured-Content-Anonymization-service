@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydicom.filereader import InvalidDicomError
 from pydicom import dcmread
 from pydicom.data import get_testdata_file
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
@@ -35,8 +36,9 @@ async def upload_file(dicom: UploadFile = File(...)):
 		response.headers["Content-Disposition"] = "attachment; filename=" + anonymized_dicom.rsplit('/',1)[1]
 		return response
 	else:
-		message = "Anonymization process was not applied to this file. File \'" + filename + "\' is NOT in dicom format."
-		return {"Error message": message}
+		message = "Anonymization process was not applied to this file. File \'" + filename + "\' is NOT in DICOM format."
+		json = {"message": message}
+		return JSONResponse(status_code=400, content=json)
 
 
 @app.get("/dicom_anonymization", response_class=HTMLResponse)
@@ -71,7 +73,9 @@ def initialize_variables(dicom):
 	filename = dicom.filename
 	dicom_file = dicom.file
 
-	input_name = filename + "_" + date_time
+	input_name = os.path.splitext(filename)[0]
+	fileExtension = os.path.splitext(filename)[1]
+	input_name = input_name + "_" + date_time + fileExtension
 	output_name = "anonymized_" + input_name
 
 	return filepath, filename, dicom_file, input_name, output_name
