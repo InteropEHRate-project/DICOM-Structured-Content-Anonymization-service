@@ -1,60 +1,42 @@
-import shutil
-import os
+import base64
 import datetime
-import uvicorn
+import os
+import pydantic
 import pydicom
+import uvicorn
 
-from fastapi import FastAPI, File, UploadFile
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
-from fastapi import Request
-from fastapi.responses import FileResponse
-from fastapi.responses import StreamingResponse
-from pydicom.filereader import InvalidDicomError
-from pydicom import dcmread
-from pydicom.data import get_testdata_file
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from io import BytesIO
+from pydicom import dcmread, dcmwrite
+from pydicom.data import get_testdata_file
+from pydicom.filebase import DicomBytesIO
+from pydicom.filereader import InvalidDicomError
 
 app = FastAPI()
 
 @app.post("/uploadfile")
-async def upload_file(dicom: UploadFile = File(...)):
-	filepath, filename, dicom_file, input_name, output_name = initialize_variables(dicom)
-	input_full_path = filepath + input_name
-	with open(input_full_path, "wb") as buffer:
-		shutil.copyfileobj(dicom_file, buffer)
-	is_dicom = is_dicom_file(input_name)
-	if is_dicom == True:
-		anonymized_dicom = anonymize_dicom(filepath, output_name, input_full_path)
-		delete_dicom(input_full_path)
-		print("File ", filename, " was successfully anonymized.")
-		def iterfile():
-			with open(anonymized_dicom, mode="rb") as file_like:
-				yield from file_like
-			delete_dicom(anonymized_dicom)
-		response = StreamingResponse(iterfile(), media_type="application/dicom")
-		response.headers["Content-Disposition"] = "attachment; filename=" + anonymized_dicom.rsplit('/',1)[1]
-		return response
-	else:
-		message = "Anonymization process was not applied to this file. File \'" + filename + "\' is NOT in DICOM format."
-		json = {"message": message}
-		return JSONResponse(status_code=400, content=json)
-
-
-@app.get("/dicom_anonymization", response_class=HTMLResponse)
-async def load_webpage():
-	return """
-	<!DOCTYPE html>
-	<html>
-		<body>
-			<form action="/uploadfile" method="post" enctype="multipart/form-data">
-				<div> Select image to upload: </div>
-				<input type="file" id="dicom" name="dicom">
-				<input type="submit" value="Upload Image" name="submit">
-			</form>
-		</body>
-	</html>
-	"""
+async def upload_file(request: Request):
+    data: bytes = await request.body()
+    filepath, input_name, output_name = initialize_variables()
+    input_full_path = filepath + input_name  
+    dicom = dcmread(BytesIO(data))
+    dcmwrite(input_full_path, dicom)         
+    is_dicom = is_dicom_file(input_name)
+    if is_dicom == True:
+        anonymized_dicom = anonymize_dicom(filepath, output_name, input_full_path)
+        delete_dicom(input_full_path)
+        message = "DICOM was successfully anonymized!"
+        with open(anonymized_dicom, "rb") as file_like:
+            encoded_string = base64.b64encode(file_like.read())
+            data = encoded_string.decode()
+        delete_dicom(anonymized_dicom)
+        json = {"status": "200", "message": message, "data": data}
+        return JSONResponse(status_code=200, content=json)
+    else:
+        message = "Anonymization process was not applied to this file since it is NOT in DICOM format."
+        json = {"status": "400", "message": message}
+        return JSONResponse(status_code=400, content=json)
 
 def is_dicom_file(filename):
 	try:
@@ -64,21 +46,17 @@ def is_dicom_file(filename):
 	except pydicom.filereader.InvalidDicomError:
 		return False
 
-def initialize_variables(dicom):
+def initialize_variables():
 	current_datetime = datetime.datetime.now()
 	date_time = current_datetime.strftime("%Y-%m-%d_%H.%M.%S")
 
 	filepath = "/venv/lib/python3.8/site-packages/pydicom/data/test_files/dicomdirtests/"
+	filename = "dicom"
 
-	filename = dicom.filename
-	dicom_file = dicom.file
-
-	input_name = os.path.splitext(filename)[0]
-	fileExtension = os.path.splitext(filename)[1]
-	input_name = input_name + "_" + date_time + fileExtension
+	input_name = filename + "_" + date_time
 	output_name = "anonymized_" + input_name
 
-	return filepath, filename, dicom_file, input_name, output_name
+	return filepath, input_name, output_name
 
 def anonymize_dicom(path, output_name, input_full_path):
 	output_full_path = path + output_name
