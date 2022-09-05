@@ -20,7 +20,7 @@ async def upload_file(request: Request):
     data: bytes = await request.body()
     filepath, input_name, output_name = initialize_variables()
     input_full_path = filepath + input_name  
-    dicom = dcmread(BytesIO(data))
+    dicom = dcmread(BytesIO(data), force=True)
     dcmwrite(input_full_path, dicom)         
     is_dicom = is_dicom_file(input_name)
     if is_dicom == True:
@@ -36,7 +36,7 @@ async def upload_file(request: Request):
     else:
         message = "Anonymization process was not applied to this file since it is NOT in DICOM format."
         json = {"status": "400", "message": message}
-        return JSONResponse(status_code=400, content=json)
+        return JSONResponse(status_code=200, content=json)
 
 def is_dicom_file(filename):
 	try:
