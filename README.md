@@ -16,7 +16,7 @@ The DICOM Structured Content Anonymization Service is deployed at the Healthcare
 2.	Download or clone the folder with the source code of the service from GitHub repository.
 3.	Navigate to the root directory of the project **/dicom-structured-content-anonymization-service** and open a terminal.
 4.	Run the command `docker-compose up -d`.
-5.	The DICOM Structured Content Anonymization Service is up and running. In order to upload an image you can use the DICOM Structured Content Anonymization Library.
+5.	The DICOM Structured Content Anonymization Service is up and running. In order to upload an image you can use the [DICOM Structured Content Anonymization Library](https://github.com/InteropEHRate-project/t-dicom-anonymization).
 6.	The response of the POST request is the anonymized DICOM image (in Base64 encoded form) which was previously uploaded to the service. 
 
 <ins>Response:</ins> If the anonymization operation has been successfully applied to the DICOM image, the response will be as follows and the anonymized DICOM image will be stored within the **data** key-value pair.
